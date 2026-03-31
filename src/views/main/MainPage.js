@@ -1,21 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  makeStyles, 
-  Grid, 
-  Paper, 
-  Typography, 
-  Button, 
+import {
+  makeStyles,
+  Grid,
+  Paper,
+  Typography,
+  Button,
   TextField,
   Box
 } from '@material-ui/core';
-import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer 
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer
 } from 'recharts';
 import { generateRadonData, calculateAverage, calculateMax, evaluateStatus } from '../../mocks/radonData';
 
@@ -117,12 +117,12 @@ const MainPage = () => {
     <div className={classes.root}>
       <Grid container spacing={3}>
         {/* Left Control Panel */}
-        <Grid item xs={12} md={3}>
+        <Grid item xs={12} md={2}>
           <div className={classes.controlPanel}>
             <div className={classes.controlHeader}>
               연결 정보
             </div>
-            
+
             <Box mb={2}>
               <Typography variant="subtitle2">* 미연결시 필요내용</Typography>
               <Typography variant="body2">- 연결상태: {isConnected ? '연결됨' : '미연결'}</Typography>
@@ -148,21 +148,21 @@ const MainPage = () => {
         </Grid>
 
         {/* Center Main Chart Area */}
-        <Grid item xs={12} md={7}>
+        <Grid item xs={12} md={8}>
           <div className={classes.countContainer}>
             <Typography variant="body2" style={{ fontWeight: 'bold' }}>Count No. 선택:</Typography>
-            <TextField 
-              size="small" 
-              variant="outlined" 
-              className={classes.countInput} 
+            <TextField
+              size="small"
+              variant="outlined"
+              className={classes.countInput}
               value={startCount}
               onChange={(e) => setStartCount(e.target.value)}
             />
             <Typography variant="body2">—</Typography>
-            <TextField 
-              size="small" 
-              variant="outlined" 
-              className={classes.countInput} 
+            <TextField
+              size="small"
+              variant="outlined"
+              className={classes.countInput}
               value={endCount}
               onChange={(e) => setEndCount(e.target.value)}
             />
@@ -175,13 +175,13 @@ const MainPage = () => {
             <Typography variant="caption" display="block" align="center" style={{ color: '#aaa', marginBottom: 16 }}>
               [제품 S/N: FT00KK123456789]
             </Typography>
-            
+
             <ResponsiveContainer width="100%" height={280}>
               <LineChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                 <Line type="monotone" dataKey="level" stroke="#ab47bc" strokeWidth={3} dot={false} />
                 <CartesianGrid stroke="#ccc" strokeDasharray="5 5" vertical={false} />
-                <XAxis dataKey="count" tick={{fontSize: 12}} />
-                <YAxis tick={{fontSize: 12}} />
+                <XAxis dataKey="count" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip />
               </LineChart>
             </ResponsiveContainer>
@@ -189,15 +189,15 @@ const MainPage = () => {
 
           <div className={classes.summaryPanel}>
             <div className={classes.summaryField}>
-              <span className={classes.summaryLabel}>측정결과:</span> 
+              <span className={classes.summaryLabel}>측정결과:</span>
               <span>{status} {status === '개선권고' ? '(기준치 초과)' : ''}</span>
             </div>
             <div className={classes.summaryField}>
-              <span className={classes.summaryLabel}>평균값</span> 
+              <span className={classes.summaryLabel}>평균값</span>
               <span>{currentAverage}</span>
             </div>
             <div className={classes.summaryField}>
-              <span className={classes.summaryLabel}>최고값</span> 
+              <span className={classes.summaryLabel}>최고값</span>
               <span>{currentMax}</span>
             </div>
           </div>
