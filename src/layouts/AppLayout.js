@@ -1,7 +1,7 @@
 import React from 'react';
 import { AppBar, Toolbar, Tabs, Tab, makeStyles, IconButton, Avatar, Typography } from '@material-ui/core';
 import { useHistory, useLocation } from 'react-router-dom';
-import AccountCircleIcon from '@material-ui/icons/AccountCircle';
+
 
 const useStyles = makeStyles((theme) => ({
   root: {
