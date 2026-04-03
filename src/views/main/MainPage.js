@@ -2,11 +2,17 @@ import React, { useState, useEffect } from 'react';
 import {
   makeStyles,
   Grid,
-
   Typography,
   Button,
   TextField,
-  Box
+  Box,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  List,
+  ListItem,
+  Divider
 } from '@material-ui/core';
 import {
   LineChart,
@@ -99,19 +105,77 @@ const MainPage = () => {
   const [startCount, setStartCount] = useState(35);
   const [endCount, setEndCount] = useState(2857);
 
-  useEffect(() => {
-    // Load mock data on mount
-    const simulatedData = generateRadonData();
-    setData(simulatedData);
-  }, []);
+  const [sectionModalOpen, setSectionModalOpen] = useState(false);
+  const [sections, setSections] = useState([
+    { id: 1, dataCount: 156, userInfo: '거실 측정 데이터' },
+    { id: 2, dataCount: 204, userInfo: '' },
+    { id: 3, dataCount: 89, userInfo: '지하실 측정 데이터' },
+  ]);
+
+  const [confirmDialog, setConfirmDialog] = useState({
+    open: false,
+    title: '',
+    content: '',
+    onConfirm: null,
+  });
+
+  const handleOpenSectionModal = () => setSectionModalOpen(true);
+  const handleCloseSectionModal = () => setSectionModalOpen(false);
+
+  const handleLoadData = (section) => {
+    // 1건당 10원이라는 가정하에 요금 계산
+    const cost = section.dataCount * 10;
+    setConfirmDialog({
+      open: true,
+      title: '데이터 로드 확인',
+      content: `데이터 로드 예상 요금은 ${cost.toLocaleString()}원 입니다. 데이터를 로드하시겠습니까?`,
+      onConfirm: () => {
+        setData(generateRadonData());
+        setSectionModalOpen(false);
+        setConfirmDialog(prev => ({ ...prev, open: false }));
+      }
+    });
+  };
+
+  const handleDeleteSection = (id) => {
+    setConfirmDialog({
+      open: true,
+      title: '데이터 삭제 확인',
+      content: '해당 Section을 삭제하시겠습니까?',
+      onConfirm: () => {
+        setSections(prevSections => prevSections.filter(sec => sec.id !== id));
+        setConfirmDialog(prev => ({ ...prev, open: false }));
+      }
+    });
+  };
 
   const handleConnectToggle = () => {
     setIsConnected(!isConnected);
   };
 
-  const currentAverage = calculateAverage(data);
-  const currentMax = calculateMax(data);
-  const status = evaluateStatus(currentAverage);
+  const handleSaveData = () => {
+    if (data.length === 0) {
+      alert("저장할 데이터가 없습니다.");
+      return;
+    }
+    const csvContent = [
+      "Count,Level",
+      ...data.map(row => `${row.count},${row.level}`)
+    ].join("\n");
+    
+    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `radon_data.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const currentAverage = data.length > 0 ? calculateAverage(data) : 0;
+  const currentMax = data.length > 0 ? calculateMax(data) : 0;
+  const status = data.length > 0 ? evaluateStatus(currentAverage) : '-';
 
   return (
     <div className={classes.root}>
@@ -124,7 +188,6 @@ const MainPage = () => {
             </div>
 
             <Box mb={2}>
-              <Typography variant="subtitle2">* 미연결시 필요내용</Typography>
               <Typography variant="body2">- 연결상태: {isConnected ? '연결됨' : '미연결'}</Typography>
             </Box>
 
@@ -136,8 +199,6 @@ const MainPage = () => {
 
             {isConnected && (
               <Box>
-                <Typography variant="subtitle2">* 연결시 필요내용</Typography>
-                <Typography variant="body2">- 연결상태: 다이렉트 연결</Typography>
                 <Typography variant="body2">- Serial Number: FT00KK123456789</Typography>
                 <Typography variant="body2">- F/W Ver: 1.0.0</Typography>
                 <Typography variant="body2">- 배터리 상태: 85%</Typography>
@@ -149,25 +210,6 @@ const MainPage = () => {
 
         {/* Center Main Chart Area */}
         <Grid item xs={12} md={8}>
-          <div className={classes.countContainer}>
-            <Typography variant="body2" style={{ fontWeight: 'bold' }}>Count No. 선택:</Typography>
-            <TextField
-              size="small"
-              variant="outlined"
-              className={classes.countInput}
-              value={startCount}
-              onChange={(e) => setStartCount(e.target.value)}
-            />
-            <Typography variant="body2">—</Typography>
-            <TextField
-              size="small"
-              variant="outlined"
-              className={classes.countInput}
-              value={endCount}
-              onChange={(e) => setEndCount(e.target.value)}
-            />
-          </div>
-
           <div className={classes.chartContainer}>
             <Typography variant="h5" align="center" gutterBottom style={{ fontWeight: 'bold' }}>
               측정 데이터 그래프
@@ -176,15 +218,23 @@ const MainPage = () => {
               [제품 S/N: FT00KK123456789]
             </Typography>
 
-            <ResponsiveContainer width="100%" height={280}>
-              <LineChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-                <Line type="monotone" dataKey="level" stroke="#ab47bc" strokeWidth={3} dot={false} />
-                <CartesianGrid stroke="#ccc" strokeDasharray="5 5" vertical={false} />
-                <XAxis dataKey="count" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip />
-              </LineChart>
-            </ResponsiveContainer>
+            {data.length > 0 ? (
+              <ResponsiveContainer width="100%" height={280}>
+                <LineChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                  <Line type="monotone" dataKey="level" stroke="#ab47bc" strokeWidth={3} dot={false} />
+                  <CartesianGrid stroke="#ccc" strokeDasharray="5 5" vertical={false} />
+                  <XAxis dataKey="count" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 280, color: '#999' }}>
+                <Typography variant="body1">
+                  Section 버튼을 클릭하여 데이터를 로드해주세요.
+                </Typography>
+              </div>
+            )}
           </div>
 
           <div className={classes.summaryPanel}>
@@ -206,22 +256,91 @@ const MainPage = () => {
         {/* Right Action Buttons */}
         <Grid item xs={12} md={2}>
           <Button className={classes.actionButton} onClick={handleConnectToggle}>
-            연결/연결해제
+            {isConnected ? '연결해제' : '연결'}
           </Button>
-          <Button className={classes.actionButton}>
-            Load Data
+          <Button className={classes.actionButton} onClick={handleOpenSectionModal} disabled={!isConnected}>
+            Section
           </Button>
-          <Button className={classes.actionButton}>
+          <Button className={classes.actionButton} disabled={!isConnected || data.length === 0} onClick={handleSaveData}>
             Save Data
           </Button>
-          <Button className={classes.actionButton}>
-            Clear
-          </Button>
-          <Button className={classes.actionButton}>
+          <Button className={classes.actionButton} disabled={!isConnected}>
             Set up
           </Button>
         </Grid>
       </Grid>
+
+      {/* Section Modal */}
+      <Dialog open={sectionModalOpen} onClose={handleCloseSectionModal} maxWidth="sm" fullWidth>
+        <DialogTitle>Section List</DialogTitle>
+        <DialogContent dividers>
+          {sections.length === 0 ? (
+            <Typography align="center">저장된 Section이 없습니다.</Typography>
+          ) : (
+            <List disablePadding>
+              {sections.map((section, index) => (
+                <React.Fragment key={section.id}>
+                  <ListItem style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 16, paddingBottom: 16 }}>
+                    <div style={{ flex: 1, paddingRight: 16 }}>
+                      <Typography variant="subtitle1" style={{ fontWeight: 'bold' }}>
+                        {index + 1}. {section.userInfo}
+                      </Typography>
+                      <Typography variant="body2" color="textSecondary">
+                        저장된 데이터 수: {section.dataCount}개
+                      </Typography>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                      <Button
+                        variant="outlined"
+                        color="primary"
+                        size="small"
+                        onClick={() => handleLoadData(section)}
+                      >
+                        데이터 로드
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        color="secondary"
+                        size="small"
+                        onClick={() => handleDeleteSection(section.id)}
+                      >
+                        데이터 삭제
+                      </Button>
+                    </div>
+                  </ListItem>
+                  <Divider />
+                </React.Fragment>
+              ))}
+            </List>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseSectionModal} color="primary">
+            닫기
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Confirmation Dialog */}
+      <Dialog
+        open={confirmDialog.open}
+        onClose={() => setConfirmDialog(prev => ({ ...prev, open: false }))}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>{confirmDialog.title}</DialogTitle>
+        <DialogContent>
+          <Typography>{confirmDialog.content}</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmDialog(prev => ({ ...prev, open: false }))} color="primary">
+            취소
+          </Button>
+          <Button onClick={confirmDialog.onConfirm} color="primary" variant="contained">
+            확인
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 };

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  makeStyles, 
+import {
+  makeStyles,
 
-  Typography, 
-  Button, 
+  Typography,
+  Button,
   TextField,
   Table,
   TableBody,
@@ -16,9 +16,12 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Grid
+  Grid,
+  IconButton,
+  TableSortLabel
 } from '@material-ui/core';
 import SearchIcon from '@material-ui/icons/Search';
+import CloseIcon from '@material-ui/icons/Close';
 import { generateBillingData } from '../../mocks/billingData';
 
 const useStyles = makeStyles((theme) => ({
@@ -76,6 +79,16 @@ const useStyles = makeStyles((theme) => ({
     color: 'blue',
     textDecoration: 'underline',
     cursor: 'pointer',
+  },
+  dialogHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: theme.palette.primary.main,
+    color: '#fff',
+  },
+  closeIcon: {
+    color: '#fff',
   }
 }));
 
@@ -83,11 +96,28 @@ const BillingPage = () => {
   const classes = useStyles();
   const [data, setData] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
-  
+  const [order, setOrder] = useState('desc');
+  const [orderBy, setOrderBy] = useState('usageDate');
+
   // Modals state
   const [billingInfoOpen, setBillingInfoOpen] = useState(false);
+  const [sellerInfoOpen, setSellerInfoOpen] = useState(false);
   const [costDetailsOpen, setCostDetailsOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [billingInfo, setBillingInfo] = useState({
+    companyName: '임시 업체명',
+    companyContact: '010-0000-0000',
+    managerName: '관리자',
+    managerContact: '010-0000-0000',
+    managerEmail: 'example@mail.com'
+  });
+
+  const handleBillingInfoChange = (e) => {
+    const { name, value } = e.target;
+    setBillingInfo(prev => ({ ...prev, [name]: value }));
+  };
 
   useEffect(() => {
     setData(generateBillingData());
@@ -126,6 +156,30 @@ const BillingPage = () => {
     setCostDetailsOpen(true);
   };
 
+  const handleRequestSort = (property) => {
+    const isAsc = orderBy === property && order === 'asc';
+    setOrder(isAsc ? 'desc' : 'asc');
+    setOrderBy(property);
+  };
+
+  const sortedData = [...data].sort((a, b) => {
+    let aValue = a[orderBy];
+    let bValue = b[orderBy];
+
+    if (orderBy === 'cost') {
+      aValue = parseInt(aValue.toString().replace(/[^0-9-]/g, ''), 10) || 0;
+      bValue = parseInt(bValue.toString().replace(/[^0-9-]/g, ''), 10) || 0;
+    }
+
+    if (bValue < aValue) {
+      return order === 'asc' ? 1 : -1;
+    }
+    if (bValue > aValue) {
+      return order === 'asc' ? -1 : 1;
+    }
+    return 0;
+  });
+
   return (
     <div className={classes.root}>
       <Grid container spacing={2} className={classes.filterContainer}>
@@ -157,12 +211,28 @@ const BillingPage = () => {
                   onChange={handleSelectAll}
                 />
               </TableCell>
-              <TableCell>사용연월</TableCell>
-              <TableCell>과금비용</TableCell>
+              <TableCell>
+                <TableSortLabel
+                  active={orderBy === 'usageDate'}
+                  direction={orderBy === 'usageDate' ? order : 'asc'}
+                  onClick={() => handleRequestSort('usageDate')}
+                >
+                  사용연월
+                </TableSortLabel>
+              </TableCell>
+              <TableCell>
+                <TableSortLabel
+                  active={orderBy === 'cost'}
+                  direction={orderBy === 'cost' ? order : 'asc'}
+                  onClick={() => handleRequestSort('cost')}
+                >
+                  과금비용
+                </TableSortLabel>
+              </TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {data.map((row) => {
+            {sortedData.map((row) => {
               const isSelected = selectedIds.indexOf(row.id) !== -1;
               return (
                 <TableRow
@@ -180,7 +250,7 @@ const BillingPage = () => {
                   </TableCell>
                   <TableCell className={classes.tableCell}>{row.usageDate}</TableCell>
                   <TableCell className={classes.tableCell}>
-                    <span 
+                    <span
                       className={classes.linkText}
                       onClick={() => handleCostClick(row)}
                     >
@@ -212,18 +282,177 @@ const BillingPage = () => {
       </div>
 
       {/* 결제정보 모달 */}
-      <Dialog open={billingInfoOpen} onClose={() => setBillingInfoOpen(false)}>
-        <DialogTitle>세금계산서 발행정보</DialogTitle>
-        <DialogContent dividers>
-          <Typography gutterBottom>고객의 세금계산서 발행정보 별도 팝업입니다.</Typography>
-          <Typography variant="body2" color="textSecondary">
-            - 사업자등록번호: 123-45-67890<br/>
-            - 대표자명: 홍길동<br/>
-            - 이메일: tax@example.com
-          </Typography>
+      <Dialog
+        open={billingInfoOpen}
+        onClose={() => { setBillingInfoOpen(false); setIsEditing(false); }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle disableTypography className={classes.dialogHeader}>
+          <Typography variant="h6" style={{ fontWeight: 'bold' }}>결제정보</Typography>
+          <IconButton onClick={() => { setBillingInfoOpen(false); setIsEditing(false); }} size="small" className={classes.closeIcon}>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+
+        <DialogContent dividers style={{ overflowX: 'hidden' }}>
+          <Typography variant="h6" style={{ fontWeight: 'bold', marginBottom: 16 }}>* 필요 정보</Typography>
+
+          <div style={{ paddingLeft: 8, marginBottom: 32 }}>
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={5} sm={4}>
+                <Typography style={{ fontWeight: 'bold', fontSize: '1rem' }}>- 업체명</Typography>
+              </Grid>
+              <Grid item xs={1} sm={1}>
+                <Typography style={{ fontWeight: 'bold', fontSize: '1rem' }}>:</Typography>
+              </Grid>
+              <Grid item xs={6} sm={7}>
+                {isEditing ? (
+                  <TextField size="small" name="companyName" value={billingInfo.companyName} onChange={handleBillingInfoChange} fullWidth />
+                ) : (
+                  <Typography style={{ fontSize: '1rem' }}>{billingInfo.companyName}</Typography>
+                )}
+              </Grid>
+
+              <Grid item xs={5} sm={4}>
+                <Typography style={{ fontWeight: 'bold', fontSize: '1rem' }}>- 회사 대표 연락처</Typography>
+              </Grid>
+              <Grid item xs={1} sm={1}>
+                <Typography style={{ fontWeight: 'bold', fontSize: '1rem' }}>:</Typography>
+              </Grid>
+              <Grid item xs={6} sm={7}>
+                {isEditing ? (
+                  <TextField size="small" name="companyContact" value={billingInfo.companyContact} onChange={handleBillingInfoChange} fullWidth />
+                ) : (
+                  <Typography style={{ fontSize: '1rem' }}>{billingInfo.companyContact}</Typography>
+                )}
+              </Grid>
+            </Grid>
+          </div>
+
+          <Typography variant="h6" style={{ fontWeight: 'bold', marginBottom: 16 }}>*담당자 정보</Typography>
+
+          <div style={{ paddingLeft: 8, marginBottom: 32 }}>
+            <Grid container spacing={2} alignItems="center">
+              <Grid item xs={5} sm={4}>
+                <Typography style={{ fontWeight: 'bold', fontSize: '1rem' }}>- 담당자명</Typography>
+              </Grid>
+              <Grid item xs={1} sm={1}>
+                <Typography style={{ fontWeight: 'bold', fontSize: '1rem' }}>:</Typography>
+              </Grid>
+              <Grid item xs={6} sm={7}>
+                {isEditing ? (
+                  <TextField size="small" name="managerName" value={billingInfo.managerName} onChange={handleBillingInfoChange} fullWidth />
+                ) : (
+                  <Typography style={{ fontSize: '1rem' }}>{billingInfo.managerName}</Typography>
+                )}
+              </Grid>
+
+              <Grid item xs={5} sm={4}>
+                <Typography style={{ fontWeight: 'bold', fontSize: '1rem' }}>- 연락처</Typography>
+              </Grid>
+              <Grid item xs={1} sm={1}>
+                <Typography style={{ fontWeight: 'bold', fontSize: '1rem' }}>:</Typography>
+              </Grid>
+              <Grid item xs={6} sm={7}>
+                {isEditing ? (
+                  <TextField size="small" name="managerContact" value={billingInfo.managerContact} onChange={handleBillingInfoChange} fullWidth />
+                ) : (
+                  <Typography style={{ fontSize: '1rem' }}>{billingInfo.managerContact}</Typography>
+                )}
+              </Grid>
+
+              <Grid item xs={5} sm={4}>
+                <Typography style={{ fontWeight: 'bold', fontSize: '1rem' }}>- 이메일</Typography>
+              </Grid>
+              <Grid item xs={1} sm={1}>
+                <Typography style={{ fontWeight: 'bold', fontSize: '1rem' }}>:</Typography>
+              </Grid>
+              <Grid item xs={6} sm={7}>
+                {isEditing ? (
+                  <TextField size="small" name="managerEmail" value={billingInfo.managerEmail} onChange={handleBillingInfoChange} fullWidth />
+                ) : (
+                  <Typography style={{ fontSize: '1rem' }}>{billingInfo.managerEmail}</Typography>
+                )}
+              </Grid>
+            </Grid>
+          </div>
         </DialogContent>
+
         <DialogActions>
-          <Button onClick={() => setBillingInfoOpen(false)} color="primary">닫기</Button>
+          <Button color="primary" disabled={isEditing} onClick={() => setSellerInfoOpen(true)}>
+            판매자 정보보기
+          </Button>
+          <Button color="primary" disabled={isEditing}>
+            사업자등록증 보기
+          </Button>
+          <Button
+            color="primary"
+            variant={isEditing ? 'contained' : 'text'}
+            onClick={() => setIsEditing(!isEditing)}
+          >
+            {isEditing ? '저장하기' : '수정하기'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 판매자 정보 모달 */}
+      <Dialog
+        open={sellerInfoOpen}
+        onClose={() => setSellerInfoOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle disableTypography className={classes.dialogHeader}>
+          <Typography variant="h6" style={{ fontWeight: 'bold' }}>판매자 정보</Typography>
+          <IconButton onClick={() => setSellerInfoOpen(false)} size="small" className={classes.closeIcon}>
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+
+        <DialogContent dividers style={{ overflowX: 'hidden' }}>
+          <Typography variant="h6" style={{ fontWeight: 'bold', marginBottom: 16 }}>*필요 정보</Typography>
+
+          <div style={{ paddingLeft: 8, marginBottom: 32 }}>
+            <Grid container spacing={2}>
+              <Grid item xs={3} sm={3}>
+                <Typography style={{ fontWeight: 'bold', fontSize: '1rem' }}>- 업체명</Typography>
+              </Grid>
+              <Grid item xs={8} sm={9}>
+                <Typography style={{ fontSize: '1rem' }}> 주식회사 에프티랩</Typography>
+              </Grid>
+
+              <Grid item xs={3} sm={3}>
+                <Typography style={{ fontWeight: 'bold', fontSize: '1rem' }}>- 회사 대표 연락처</Typography>
+              </Grid>
+              <Grid item xs={8} sm={9}>
+                <Typography style={{ fontSize: '1rem' }}>070-4906-4702</Typography>
+              </Grid>
+
+              <Grid item xs={3} sm={3}>
+                <Typography style={{ fontWeight: 'bold', fontSize: '1rem' }}>- 사업자번호</Typography>
+              </Grid>
+              <Grid item xs={8} sm={9}>
+                <Typography style={{ fontSize: '1rem' }}>210-81-34708</Typography>
+              </Grid>
+
+              <Grid item xs={3} sm={3}>
+                <Typography style={{ fontWeight: 'bold', fontSize: '1rem' }}>- 결제계좌</Typography>
+              </Grid>
+              <Grid item xs={8} sm={9}>
+                <Typography style={{ fontSize: '1rem' }}>기업은행 401-014501-04-015 [예금자명: (주)에프티랩]</Typography>
+              </Grid>
+            </Grid>
+          </div>
+        </DialogContent>
+
+        <DialogActions>
+          <Button color="primary">
+            사업자등록증 보기
+          </Button>
+          <Button color="primary">
+            통장사본 보기
+          </Button>
         </DialogActions>
       </Dialog>
 
