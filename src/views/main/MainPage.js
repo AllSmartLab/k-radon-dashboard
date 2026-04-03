@@ -156,10 +156,10 @@ const MainPage = () => {
       return;
     }
     const csvContent = [
-      "Count,Level",
+      "Count,Radon Level",
       ...data.map(row => `${row.count},${row.level}`)
     ].join("\n");
-    
+
     const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");

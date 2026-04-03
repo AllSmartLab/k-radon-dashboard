@@ -1,6 +1,6 @@
 export const generateRadonData = () => {
   const data = [];
-  for (let i = 0; i < 3500; i += 10) {
+  for (let i = 0; i < 3500; i += 1) {
     // Generate some sine wave like dummy data
     const value = Math.sin(i * 0.01) * 50 + 100 + (Math.random() * 10 - 5);
     data.push({
