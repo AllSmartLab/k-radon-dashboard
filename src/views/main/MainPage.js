@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   makeStyles,
   Grid,
   Typography,
   Button,
-  TextField,
   Box,
   Dialog,
   DialogTitle,
@@ -102,8 +101,6 @@ const MainPage = () => {
   const classes = useStyles();
   const [data, setData] = useState([]);
   const [isConnected, setIsConnected] = useState(false);
-  const [startCount, setStartCount] = useState(35);
-  const [endCount, setEndCount] = useState(2857);
 
   const [sectionModalOpen, setSectionModalOpen] = useState(false);
   const [sections, setSections] = useState([

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AppBar, Toolbar, Tabs, Tab, makeStyles, IconButton, Avatar, Typography, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Grid, Button, Menu, MenuItem } from '@material-ui/core';
+import { AppBar, Toolbar, Tabs, Tab, makeStyles, IconButton, Typography, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Grid, Button, Menu, MenuItem } from '@material-ui/core';
 import AccountCircleIcon from '@material-ui/icons/AccountCircle';
 import { useHistory, useLocation } from 'react-router-dom';
 import ftlabLogo from '../views/assets/ftlab_logo.png';
