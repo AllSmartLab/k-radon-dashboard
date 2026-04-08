@@ -69,6 +69,8 @@ class ProtocolParser {
                     console.error(`Checksum mismatch. Expected ${255 - this.checksum}, got ${ch}`);
                 }
                 break;
+            default:
+                break;
         }
     }
 

@@ -43,7 +43,7 @@ const useSerialPort = (onMessageReceived) => {
   }, []);
 
   // 리더(Reader) 루프 동작
-  const startReadLoop = async (serialPort, _appendLog) => {
+  const startReadLoop = useCallback(async (serialPort, _appendLog) => {
     // ProtocolParser 초기화 시 패킷 파싱 로직 연결
     const parser = new ProtocolParser((cmd, dataArray) => {
       const rxData = new Uint8Array(dataArray);
@@ -92,7 +92,7 @@ const useSerialPort = (onMessageReceived) => {
         }
       }
     }
-  };
+  }, [getCmdName, onMessageReceived]);
 
   // 시리얼 포트 연결
   const connectSerial = useCallback(async (baudRate = 19200) => {
@@ -123,7 +123,7 @@ const useSerialPort = (onMessageReceived) => {
       setError(err);
       throw err;
     }
-  }, []);
+  }, [appendLog, startReadLoop]);
 
   // 시리얼 포트 연결 해제
   const disconnectSerial = useCallback(async () => {
