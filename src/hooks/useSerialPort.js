@@ -10,21 +10,21 @@ const useSerialPort = (onMessageReceived) => {
   const writerRef = useRef(null);
   const [isSerialConnected, setIsSerialConnected] = useState(false);
   const [error, setError] = useState(null);
-  
+
   // 장비 정보 상태 관리
   const [deviceInfo, setDeviceInfo] = useState({
     sn: '-',
     version: '-',
     devType: '-',
-    battery: '85%',
-    lastCheck: '2026-03-31'
+    battery: '',
+    lastCheck: ''
   });
 
   // 화면 출력용 통신 로그 관리
   const [serialLogs, setSerialLogs] = useState([]);
   const appendLog = useCallback((msg, isTx = false) => {
     const d = new Date();
-    const timeStr = d.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second:'2-digit' }) + '.' + String(d.getMilliseconds()).padStart(3, '0');
+    const timeStr = d.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) + '.' + String(d.getMilliseconds()).padStart(3, '0');
     const prefix = isTx ? '[TX]' : '[RX]';
     const logPrefix = isTx === null ? '[INFO]' : prefix;
     setSerialLogs(prev => [...prev, `${timeStr} ${logPrefix} ${msg}`]);
@@ -55,14 +55,29 @@ const useSerialPort = (onMessageReceived) => {
         case CMD.BASIC_INFOR_RETURN: { // 0x13
           let add = 0;
           const devType = rxData[add++];
-          
+
           let sn = '';
           for (let i = 0; i < 12; i++) sn += String.fromCharCode(rxData[add++]);
-          
+
           let version = '';
           for (let i = 0; i < 6; i++) version += String.fromCharCode(rxData[add++]);
 
           setDeviceInfo(prev => ({ ...prev, devType, sn, version }));
+          break;
+        }
+        case CMD.RTC_RETURN: { // 0x31
+          if (rxData.length >= 6) {
+            let year = rxData[0] + 2000;
+            let mon = rxData[1].toString().padStart(2, '0');
+            let day = rxData[2].toString().padStart(2, '0');
+            let hour = rxData[3].toString().padStart(2, '0');
+            let min = rxData[4].toString().padStart(2, '0');
+            let sec = rxData[5].toString().padStart(2, '0');
+            
+            const rtcTime = `${year}.${mon}.${day} ${hour}:${min}:${sec}`;
+            // 파싱한 시간을 기기의 마지막 점검일자(RTC 시간)로 반영
+            setDeviceInfo(prev => ({ ...prev, lastCheck: rtcTime }));
+          }
           break;
         }
         // 기타 CMD 응답 처리 필요 시 추가

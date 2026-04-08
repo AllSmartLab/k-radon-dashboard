@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   makeStyles,
   Grid,
@@ -26,7 +26,6 @@ import {
 } from 'recharts';
 import { generateRadonData, calculateAverage, calculateMax, evaluateStatus } from '../../mocks/radonData';
 import useSerialPort from '../../hooks/useSerialPort';
-import { CMD } from '../../hooks/protocol';
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -139,8 +138,26 @@ const MainPage = () => {
   const [data, setData] = useState([]);
   const [isConnected, setIsConnected] = useState(false);
   const [isMockMode, setIsMockMode] = useState(true); // Mock 테스트 모드 스위치
-  
-  const { connectSerial, disconnectSerial, sendData, deviceInfo, serialLogs, clearLogs } = useSerialPort(); // 모듈 내에서 상태 및 로그 관리
+
+  const { connectSerial, disconnectSerial, sendData, deviceInfo, serialLogs, clearLogs, CMD } = useSerialPort(); // 모듈 내에서 상태 및 로그 관리
+
+  const logsEndRef = useRef(null);
+
+  useEffect(() => {
+    if (logsEndRef.current) {
+      logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [serialLogs]);
+
+  const handleSetup = async () => {
+    if (isConnected) {
+      try {
+        await sendData(CMD.RTC_QUERY, []);
+      } catch (err) {
+        console.error("Setup/RTC 요청 전송 오류:", err);
+      }
+    }
+  };
 
   const [sectionModalOpen, setSectionModalOpen] = useState(false);
   const [sections, setSections] = useState([
@@ -204,10 +221,10 @@ const MainPage = () => {
           await connectSerial(19200); // 보드레이트 장비 기준 적용
           setIsConnected(true);
           console.log("시리얼 모듈 연결 성공");
-          
+
           // 연결 직후 기본 정보 요청 전송
           await sendData(CMD.BASIC_INFOR_QUERY, []);
-          
+
         } catch (e) {
           alert(e.message || "시리얼 연결 과정에서 오류가 발생했거나 취소되었습니다.");
         }
@@ -320,11 +337,11 @@ const MainPage = () => {
         <Grid item xs={12} md={2}>
           <FormControlLabel
             control={
-              <Switch 
-                checked={isMockMode} 
-                onChange={(e) => setIsMockMode(e.target.checked)} 
+              <Switch
+                checked={isMockMode}
+                onChange={(e) => setIsMockMode(e.target.checked)}
                 color="primary"
-                disabled={isConnected} 
+                disabled={isConnected}
               />
             }
             label={isMockMode ? "Mock 데이터" : "시리얼 통신"}
@@ -339,7 +356,7 @@ const MainPage = () => {
           <Button className={classes.actionButton} disabled={!isConnected || data.length === 0} onClick={handleSaveData}>
             Save Data
           </Button>
-          <Button className={classes.actionButton} disabled={!isConnected}>
+          <Button className={classes.actionButton} disabled={!isConnected} onClick={handleSetup}>
             Set up
           </Button>
         </Grid>
@@ -351,10 +368,10 @@ const MainPage = () => {
           <Typography className={classes.logTitle}>통신 로그 (Serial Monitor)</Typography>
           <Button variant="outlined" className={classes.logClearBtn} onClick={clearLogs}>Clear</Button>
         </div>
-        {/* 하단에서부터 로그 추가하는 경우 최신순을 위해 reverse() 고려하거나 DOM scroll 사용 */}
         {serialLogs.map((log, index) => (
           <div key={index} style={{ marginBottom: 4 }}>{log}</div>
         ))}
+        <div ref={logsEndRef} />
       </div>
 
       {/* Section Modal */}
