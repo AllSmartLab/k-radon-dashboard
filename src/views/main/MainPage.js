@@ -11,7 +11,9 @@ import {
   DialogActions,
   List,
   ListItem,
-  Divider
+  Divider,
+  Switch,
+  FormControlLabel
 } from '@material-ui/core';
 import {
   LineChart,
@@ -23,6 +25,8 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import { generateRadonData, calculateAverage, calculateMax, evaluateStatus } from '../../mocks/radonData';
+import useSerialPort from '../../hooks/useSerialPort';
+import { CMD } from '../../hooks/protocol';
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -94,6 +98,39 @@ const useStyles = makeStyles((theme) => ({
     borderRadius: 20,
     backgroundColor: '#fff',
     width: 'fit-content',
+  },
+  logContainer: {
+    marginTop: theme.spacing(3),
+    backgroundColor: '#1e1e1e',
+    color: '#00ff00',
+    padding: theme.spacing(2),
+    borderRadius: 8,
+    height: 250,
+    overflowY: 'auto',
+    fontFamily: 'Consolas, "Courier New", monospace',
+    fontSize: '0.85rem',
+    border: '1px solid #444'
+  },
+  logHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing(1),
+    borderBottom: '1px solid #333',
+    paddingBottom: theme.spacing(1),
+  },
+  logTitle: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  logClearBtn: {
+    color: '#ccc',
+    borderColor: '#555',
+    fontSize: '0.75rem',
+    padding: '2px 8px',
+    '&:hover': {
+      backgroundColor: '#333'
+    }
   }
 }));
 
@@ -101,6 +138,9 @@ const MainPage = () => {
   const classes = useStyles();
   const [data, setData] = useState([]);
   const [isConnected, setIsConnected] = useState(false);
+  const [isMockMode, setIsMockMode] = useState(true); // Mock 테스트 모드 스위치
+  
+  const { connectSerial, disconnectSerial, sendData, deviceInfo, serialLogs, clearLogs } = useSerialPort(); // 모듈 내에서 상태 및 로그 관리
 
   const [sectionModalOpen, setSectionModalOpen] = useState(false);
   const [sections, setSections] = useState([
@@ -146,8 +186,33 @@ const MainPage = () => {
     });
   };
 
-  const handleConnectToggle = () => {
-    setIsConnected(!isConnected);
+  const handleConnectToggle = async () => {
+    if (isConnected) {
+      // 연결 해제 로직
+      if (!isMockMode) {
+        await disconnectSerial();
+      }
+      setIsConnected(false);
+    } else {
+      // 연결 로직
+      if (isMockMode) {
+        // 화면 디자인용 Mock Data 연결 모드
+        setIsConnected(true);
+      } else {
+        // 실제 시리얼 포트 연결 (커스텀 훅 사용)
+        try {
+          await connectSerial(19200); // 보드레이트 장비 기준 적용
+          setIsConnected(true);
+          console.log("시리얼 모듈 연결 성공");
+          
+          // 연결 직후 기본 정보 요청 전송
+          await sendData(CMD.BASIC_INFOR_QUERY, []);
+          
+        } catch (e) {
+          alert(e.message || "시리얼 연결 과정에서 오류가 발생했거나 취소되었습니다.");
+        }
+      }
+    }
   };
 
   const handleSaveData = () => {
@@ -196,10 +261,11 @@ const MainPage = () => {
 
             {isConnected && (
               <Box>
-                <Typography variant="body2">- Serial Number: FT00KK123456789</Typography>
-                <Typography variant="body2">- F/W Ver: 1.0.0</Typography>
-                <Typography variant="body2">- 배터리 상태: 85%</Typography>
-                <Typography variant="body2">- 마지막 점검일자: 2026-03-31</Typography>
+                <Typography variant="body2">- Serial Number: {deviceInfo.sn}</Typography>
+                <Typography variant="body2">- F/W Ver: {deviceInfo.version}</Typography>
+                <Typography variant="body2">- Device Type: {deviceInfo.devType}</Typography>
+                <Typography variant="body2">- 배터리 상태: {deviceInfo.battery}</Typography>
+                <Typography variant="body2">- 마지막 점검일자: {deviceInfo.lastCheck}</Typography>
               </Box>
             )}
           </div>
@@ -252,6 +318,18 @@ const MainPage = () => {
 
         {/* Right Action Buttons */}
         <Grid item xs={12} md={2}>
+          <FormControlLabel
+            control={
+              <Switch 
+                checked={isMockMode} 
+                onChange={(e) => setIsMockMode(e.target.checked)} 
+                color="primary"
+                disabled={isConnected} 
+              />
+            }
+            label={isMockMode ? "Mock 데이터" : "시리얼 통신"}
+            style={{ marginBottom: 16, display: 'flex', justifyContent: 'center' }}
+          />
           <Button className={classes.actionButton} onClick={handleConnectToggle}>
             {isConnected ? '연결해제' : '연결'}
           </Button>
@@ -266,6 +344,18 @@ const MainPage = () => {
           </Button>
         </Grid>
       </Grid>
+
+      {/* Serial Logs UI */}
+      <div className={classes.logContainer}>
+        <div className={classes.logHeader}>
+          <Typography className={classes.logTitle}>통신 로그 (Serial Monitor)</Typography>
+          <Button variant="outlined" className={classes.logClearBtn} onClick={clearLogs}>Clear</Button>
+        </div>
+        {/* 하단에서부터 로그 추가하는 경우 최신순을 위해 reverse() 고려하거나 DOM scroll 사용 */}
+        {serialLogs.map((log, index) => (
+          <div key={index} style={{ marginBottom: 4 }}>{log}</div>
+        ))}
+      </div>
 
       {/* Section Modal */}
       <Dialog open={sectionModalOpen} onClose={handleCloseSectionModal} maxWidth="sm" fullWidth>
